@@ -10,7 +10,7 @@ monitor.setTextScale(0.5)
 local screenWidth, screenHeight = monitor.getSize()
  
 Dispensing = false
-
+items = {}
 -- This is a temporary example on how items table looks like
 --local items = {
  --   { name = "Diamond", nbt_name = "minecraft:diamond", price = 2, amount = 5 }
@@ -259,8 +259,6 @@ end
 
 
 
-profit = getMoney()
-
 if fs.exists("items.txt") then
     items = getItems()
     dontTouch()
@@ -269,7 +267,7 @@ else
     items = getItems()
 end
 
-
+profit = getMoney()
     
 parallel.waitForAny(displayItems, getTouch, transferItems)
 
