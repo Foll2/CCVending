@@ -10,7 +10,6 @@ monitor.setTextScale(0.5)
 local screenWidth, screenHeight = monitor.getSize()
  
 Dispensing = false
-items = {}
 -- This is a temporary example on how items table looks like
 --local items = {
  --   { name = "Diamond", nbt_name = "minecraft:diamond", price = 2, amount = 5 }
@@ -36,6 +35,7 @@ end
 
 
 function getMoney(type)
+    local items = getItems()
     local contents = storage.list()
     local money = 0
     for index, item in pairs(contents) do
@@ -68,6 +68,7 @@ function dispenseBalance()
         local balance = getMoney(1)
         if balance > 0  then
             local contents = storage.list()
+            local items = getItems()
             for index, item in ipairs(contents) do
                 if item.name == items[2].nbt_name and balance > 0 then
                     Dispensing = true
@@ -110,6 +111,7 @@ function getStoredItems(item_name)
 end
 
 function dispenseItem(itemIndex)
+    local items = getItems()
     local selected = items[itemIndex]
     if selected then
         local balance = getMoney(1)
@@ -136,6 +138,7 @@ function dispenseItem(itemIndex)
 end
 
 function displayItems()
+    local items = getItems()
     while true do
         local balance = getMoney(1)
 
@@ -157,9 +160,9 @@ function displayItems()
 end
 
 function getTouch()
+    local items = getItems()
     while true do
         local event, side, xPos, yPos = os.pullEvent("monitor_touch")
-        local items = getItems()
         if xPos <= screenWidth and yPos <= #items+1 then
             --local balance = getMoney(1)
             dispenseItem(yPos-1)
@@ -260,11 +263,9 @@ end
 
 
 if fs.exists("items.txt") then
-    items = getItems()
     dontTouch()
 else
     setup()
-    items = getItems()
 end
 
 profit = getMoney()
