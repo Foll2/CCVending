@@ -13,3 +13,7 @@ Run this on the turtle:
 ```
 wget https://github.com/Foll2/CCVending/raw/main/turtle/startup.lua
 ```
+
+![Front](./Front.png)
+
+![Back](./Back.png)

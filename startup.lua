@@ -2,7 +2,8 @@
 
 local monitor = peripheral.wrap("back")
 local dropper = peripheral.wrap("bottom")
-local storage = peripheral.wrap("top")
+storageside = "top"
+local storage = peripheral.wrap(storageside)
 turtleside = "right"
 local turtl = peripheral.wrap(turtleside)
 monitor.setTextScale(0.5)
@@ -15,6 +16,10 @@ Dispensing = false
  --   { name = "Diamond", nbt_name = "minecraft:diamond", price = 2, amount = 5 }
 --}
 
+
+function toTitleCase(str)
+    return str:match(":(.*)"):gsub("(%a)([%w_]*)", function(a, b) return a:upper() .. b:gsub("_", " ") end)
+end
 
 function sendPulse(Strength, Time)
     redstone.setAnalogOutput(turtleside, Strength)
@@ -39,7 +44,7 @@ function getMoney(type)
     local contents = storage.list()
     local money = 0
     for index, item in pairs(contents) do
-        if item.name == items[2].nbt_name then
+        if item.name == items[1].price_nbt then
             money = money + item.count
         end
     end
@@ -50,12 +55,12 @@ function getMoney(type)
     end
 end
 
-function redDisp(index, amount)
+function redDisp(index, amount, side)
     sleep(0.1)
-    dropper.pullItems(storage, index, amount)
+    dropper.pullItems(side, index, amount)
 
     -- for i = 1, amount do
-    while dropper.list() ~= nil do
+    while next(dropper.list()) do
         redstone.setOutput("bottom", true)
         sleep(0.1)
         redstone.setOutput("bottom", false)
@@ -70,10 +75,11 @@ function dispenseBalance()
             local contents = storage.list()
             local items = getItems()
             for index, item in ipairs(contents) do
-                if item.name == items[2].nbt_name and balance > 0 then
+                if item.name == items[1].price_nbt and balance > 0 then
                     Dispensing = true
-                    balance = balance - item.count
-                    redDisp(index, item.count)
+                    local stackDisp = math.min(64, balance, item.count)
+                    balance = balance - stackDisp
+                    redDisp(index, stackDisp, storageside)
                 end
             end
             Dispensing = false
@@ -119,10 +125,9 @@ function dispenseItem(itemIndex)
         if count >= selected.amount then
             if balance >= selected.price then
                 local needDrop = selected.amount
-                -- balance = balance - selected.price
                 profit = profit + selected.price
                 for index, item in ipairs(items_stored) do
-                    redDisp(item.index, math.max(math.min(64, needDrop)))
+                    redDisp(item.index, math.min(64, needDrop), storageside)
                     needDrop = needDrop - item.amount
                 end
                 print("Dispensed "..selected.amount.." " .. selected.name .. " for $" .. selected.price)
@@ -145,16 +150,21 @@ function displayItems()
         monitor.setTextScale(0.5)
         monitor.clear()
         monitor.setCursorPos(1, 1)
-        monitor.write("Balance: $" .. balance)
+        monitor.write("Price: " .. toTitleCase(items[1].price_nbt))
+        -- monitor.write("Balance: $" .. balance)
         for index, item in ipairs(items) do
-            monitor.setCursorPos(1, index+1)
+            monitor.setCursorPos(1, index+2)
             -- monitor.write(index .. ". " .. item.name .. " - $" .. item.price)
-            monitor.write("$" .. item.price .. " - " .. item.name)
+            monitor.write("$" .. item.price .. " " .. item.name)
         end
 
         --Dispense money button
+        monitor.setCursorPos(1, screenHeight-2)
+        monitor.write("Balance: $" .. balance)
         monitor.setCursorPos(1, screenHeight-1)
-        monitor.write("Dispense $"..balance)
+        monitor.write("Dispense")
+
+        -- monitor.write("Dispense $"..balance)
 
     end
 end
@@ -163,9 +173,9 @@ function getTouch()
     local items = getItems()
     while true do
         local event, side, xPos, yPos = os.pullEvent("monitor_touch")
-        if xPos <= screenWidth and yPos <= #items+1 then
+        if xPos <= screenWidth and yPos <= #items+2 then
             --local balance = getMoney(1)
-            dispenseItem(yPos-1)
+            dispenseItem(yPos-2)
         elseif xPos <= screenWidth and yPos >= screenHeight-2 then
             dispenseBalance()
         end
@@ -191,6 +201,29 @@ function transferItems()
         end
         sleep(0.3)
     end
+end
+
+function dropShit()
+    while true do
+        local content = storage.list()
+        local whitelist = getItems()
+        for index, item in pairs(content) do
+            -- for index, item in pairs(peripheral.wrap("top").list()) do print(item) end
+            local inlist = false
+            for i, wItem in ipairs(whitelist) do
+                if item.name == wItem.nbt_name or item.name == wItem.price_nbt then
+                    inlist = true
+                    break
+                end
+            end
+            if not inlist then
+                redDisp(index, item.count, storageside)
+            end
+        end
+
+        sleep(2)
+    end
+
 end
 
 
@@ -220,10 +253,6 @@ function setup()
                 break
             end
         end
-    end
-
-    local function toTitleCase(str)
-        return str:match(":(.*)"):gsub("(%a)([%w_]*)", function(a, b) return a:upper() .. b:gsub("_", " ") end)
     end
 
     local function gettingItems()
@@ -268,8 +297,10 @@ else
     setup()
 end
 
-profit = getMoney()
-    
-parallel.waitForAny(displayItems, getTouch, transferItems)
-
-
+if fs.exists("items.txt") then
+    profit = getMoney()
+        
+    parallel.waitForAny(displayItems, getTouch, transferItems, dropShit)
+else
+    print("No items found")
+end
