@@ -1,14 +1,20 @@
 ---@diagnostic disable: undefined-global
 
 local monitor = peripheral.wrap("back")
-local dropper = peripheral.wrap("bottom")
+dropperside = "bottom"
+local dropper = peripheral.wrap(dropperside)
 storageside = "top"
 local storage = peripheral.wrap(storageside)
+-- "Turtle" is just input storage
+turtleinv = 16
 turtleside = "right"
 local turtl = peripheral.wrap(turtleside)
+
 monitor.setTextScale(0.5)
  
 local screenWidth, screenHeight = monitor.getSize()
+
+max_length = math.max(screenWidth - 8, 5)
  
 Dispensing = false
 -- This is a temporary example on how items table looks like
@@ -16,6 +22,13 @@ Dispensing = false
  --   { name = "Diamond", nbt_name = "minecraft:diamond", price = 2, amount = 5 }
 --}
 
+function scroll_name(name, step)
+    if #name <= max_length then
+        return name
+    end
+    local start_index = step % (#name - max_length + 1) + 1
+    return name:sub(start_index, start_index + max_length - 1)
+end
 
 function toTitleCase(str)
     return str:match(":(.*)"):gsub("(%a)([%w_]*)", function(a, b) return a:upper() .. b:gsub("_", " ") end)
@@ -61,9 +74,9 @@ function redDisp(index, amount, side)
 
     -- for i = 1, amount do
     while next(dropper.list()) do
-        redstone.setOutput("bottom", true)
+        redstone.setOutput(dropperside, true)
         sleep(0.1)
-        redstone.setOutput("bottom", false)
+        redstone.setOutput(dropperside, false)
         sleep(0.1)
     end
 end
@@ -144,6 +157,7 @@ end
 
 function displayItems()
     local items = getItems()
+    local step = 0
     while true do
         local balance = getMoney(1)
 
@@ -152,10 +166,14 @@ function displayItems()
         monitor.setCursorPos(1, 1)
         monitor.write("Price: " .. toTitleCase(items[1].price_nbt))
         -- monitor.write("Balance: $" .. balance)
+        if step == 120 then
+            step = 0
+        end
+        step = step + 1
         for index, item in ipairs(items) do
             monitor.setCursorPos(1, index+2)
-            -- monitor.write(index .. ". " .. item.name .. " - $" .. item.price)
-            monitor.write("$" .. item.price .. " " .. item.name)
+            -- monitor.write("$" .. item.price .. " " .. item.name)
+            monitor.write(string.format("$%3d %-" .. max_length .. "s %2dpcs", item.price, scroll_name(item.name, math.floor(os.epoch("utc")/1000)), item.amount))
         end
 
         --Dispense money button
@@ -196,7 +214,7 @@ end
 
 function transferItems()
     while true do
-        for i=1, 16 do
+        for i=1, turtleinv do
             status = storage.pullItems(turtleside, i)
         end
         sleep(0.3)
@@ -260,7 +278,7 @@ function setup()
         local blacklist = 0
         while true do
 
-            for i=1, 16 do
+            for i=1, turtleinv do
                 local status = storage.pullItems(turtleside, i)
                 sleep(0.3)
             end
