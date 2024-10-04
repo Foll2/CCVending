@@ -42,7 +42,7 @@ function sendPulse(Strength, Time)
     redstone.setAnalogOutput(turtleside, 0)
 end
 
-function getItems()
+function loadItemData()
     local items = {}
     local file = io.open("items.txt", "r")
     if file then
@@ -53,9 +53,8 @@ function getItems()
     return items
 end
 
-
 function getMoney(type)
-    local items = getItems()
+    local items = loadItemData()
     local contents = storage.list()
     local money = 0
     for index, item in pairs(contents) do
@@ -88,7 +87,7 @@ function dispenseBalance()
         local balance = getMoney(1)
         if balance > 0  then
             local contents = storage.list()
-            local items = getItems()
+            local items = loadItemData()
             for index, item in ipairs(contents) do
                 if item.name == items[1].price_nbt and balance > 0 then
                     Dispensing = true
@@ -118,21 +117,26 @@ function dontTouch()
     term.setCursorPos(1, 4)
 end
 
-function getStoredItems(item_name)
+function getStoredItems(item_name, countonly)
     local contents = storage.list()
     local items = {}
     local count = 0
     for index, item in ipairs(contents) do
         if item.name == item_name then
             count = count + item.count
-            table.insert(items, { index = index, amount = item.count })
+            if not countonly then
+                table.insert(items, { index = index, amount = item.count })
+            end
         end
+    end
+    if countonly then
+        return count
     end
     return count, items
 end
 
 function dispenseItem(itemIndex)
-    local items = getItems()
+    local items = loadItemData()
     local selected = items[itemIndex]
     if selected then
         local balance = getMoney(1)
@@ -158,8 +162,7 @@ function dispenseItem(itemIndex)
 end
 
 function displayItems()
-    local items = getItems()
-    local step = 0
+    local items = loadItemData()
     while true do
         local balance = getMoney(1)
 
@@ -168,14 +171,14 @@ function displayItems()
         monitor.setCursorPos(1, 1)
         monitor.write("Price: " .. toTitleCase(items[1].price_nbt))
         -- monitor.write("Balance: $" .. balance)
-        if step == 120 then
-            step = 0
-        end
-        step = step + 1
+
+        local step = math.floor(os.epoch("utc")/1000)
         for index, item in ipairs(items) do
             monitor.setCursorPos(1, index+2)
             -- monitor.write("$" .. item.price .. " " .. item.name)
-            monitor.write(string.format("$%3d %-" .. max_length .. "s %2dpcs", item.price, scroll_name(item.name, math.floor(os.epoch("utc")/1000)), item.amount))
+            --local storeditem = getStoredItems(item.nbt_name, true)
+            --monitor.write(string.format("%s %-" .. max_length .. "s %2dpcs", item.amount >= storeditem  and "---" or string.format("$%3d", item.price), scroll_name(item.name, step), item.amount))
+            monitor.write(string.format("$%3d %-" .. max_length .. "s %2dpcs", item.price, scroll_name(item.name, step), item.amount))
         end
 
         --Dispense money button
@@ -190,7 +193,7 @@ function displayItems()
 end
 
 function getTouch()
-    local items = getItems()
+    local items = loadItemData()
     while true do
         local event, side, xPos, yPos = os.pullEvent("monitor_touch")
         if xPos <= screenWidth and yPos <= #items+2 then
@@ -214,7 +217,7 @@ end
 function dropShit()
     while true do
         local content = storage.list()
-        local whitelist = getItems()
+        local whitelist = loadItemData()
         for index, item in pairs(content) do
             -- for index, item in pairs(peripheral.wrap("top").list()) do print(item) end
             local inlist = false
@@ -233,7 +236,6 @@ function dropShit()
     end
 
 end
-
 
 function setup()
     term.clear()
@@ -287,7 +289,7 @@ function setup()
 
             if #items > 0 then
                 fs.delete("items.txt")
-                local file = fs.open("items.txt", "w")
+                local file = fs.open("items.txt", "w+")
                 file.write(textutils.serialize(items))
                 file.close()
             end
