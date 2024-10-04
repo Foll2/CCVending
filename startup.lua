@@ -5,7 +5,9 @@ dropperside = "bottom"
 local dropper = peripheral.wrap(dropperside)
 storageside = "top"
 local storage = peripheral.wrap(storageside)
+
 -- "Turtle" is just input storage
+inputStorage = true -- Change to false if you don't want input storage
 turtleinv = 16
 turtleside = "right"
 local turtl = peripheral.wrap(turtleside)
@@ -14,12 +16,12 @@ monitor.setTextScale(0.5)
  
 local screenWidth, screenHeight = monitor.getSize()
 
-max_length = math.max(screenWidth - 8, 5)
+max_length = math.max(screenWidth - 11, 7)
  
 Dispensing = false
 -- This is a temporary example on how items table looks like
 --local items = {
- --   { name = "Diamond", nbt_name = "minecraft:diamond", price = 2, amount = 5 }
+--   { name = "Diamond", nbt_name = "minecraft:diamond", price = 2, amount = 5 }
 --}
 
 function scroll_name(name, step)
@@ -200,18 +202,6 @@ function getTouch()
     end
 end
 
-function listenForCommands()
-    while true do
-        local strength = redstone.getAnalogInput(turtleside)
-
-        if strength == 9 then
-            transferItems()
-        end
-
-        sleep(0.3)
-    end
-end
-
 function transferItems()
     while true do
         for i=1, turtleinv do
@@ -278,9 +268,11 @@ function setup()
         local blacklist = 0
         while true do
 
-            for i=1, turtleinv do
-                local status = storage.pullItems(turtleside, i)
-                sleep(0.3)
+            if inputStorage then
+                for i=1, turtleinv do
+                    local status = storage.pullItems(turtleside, i)
+                    sleep(0.3)
+                end
             end
 
             local contents = storage.list()
@@ -317,8 +309,11 @@ end
 
 if fs.exists("items.txt") then
     profit = getMoney()
-        
-    parallel.waitForAny(displayItems, getTouch, transferItems, dropShit)
+    if inputStorage then
+        parallel.waitForAny(displayItems, getTouch, transferItems, dropShit)
+    else
+        parallel.waitForAny(displayItems, getTouch, dropShit)
+    end
 else
     print("No items found")
 end
